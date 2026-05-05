@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>야구장의 음주문화 - 절주 시뮬레이터</title>
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        font-family: Arial, sans-serif;
+        color: white;
+        overflow: hidden;
+        background: black;
+    }
+
+    /* 실제 배경 이미지 */
+    #bgImg {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+        transition: filter 0.7s ease, transform 0.3s ease, opacity 0.5s ease;
+    }
+
+    /* 이미지가 안 불러와졌을 때 안내문 */
+    #imageError {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 5;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: rgba(255, 0, 0, 0.85);
+        color: white;
+        font-weight: bold;
+        display: none;
+    }
+
+    #overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 1;
+        pointer-events: none;
+        transition: background 0.5s ease;
+    }
+
+    .screen {
+        position: relative;
+        z-index: 2;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 24px;
+        text-align: center;
+    }
+
+    .card {
+        width: min(80%, 620px);
+        padding: 28px 24px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.12);
+        border: none;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(10px);
+    }
+
+    #visitorCount {
+        font-size: 16px;
+        opacity: 0.88;
+        margin-bottom: 18px;
+    }
+
+    h1 {
+        font-size: clamp(28px, 5vw, 48px);
+        margin-bottom: 20px;
+        line-height: 1.35;
+    }
+
+    p {
+        font-size: clamp(18px, 3vw, 27px);
+        line-height: 1.6;
+        white-space: pre-line;
+        margin-bottom: 30px;
+    }
+
+    .buttons {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    button {
+        padding: 16px 32px;
+        font-size: 20px;
+        font-weight: bold;
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    button:hover {
+        transform: scale(1.06);
+    }
+
+    .start-btn {
+        background: #1e88e5;
+        color: white;
+    }
+
+    .non-alcohol-btn {
+        background: #43a047;
+        color: white;
+    }
+
+    .beer-btn {
+        background: #f9a825;
+        color: #222;
+    }
+
+    .drink-btn {
+        background: #e53935;
+        color: white;
+    }
+
+    .stop-btn {
+        background: #43a047;
+        color: white;
+    }
+
+    .restart-btn {
+        background: white;
+        color: #222;
+    }
+
+    /* 효과는 이미지에만 적용됨 */
+    .level-0 {
+        filter: none;
+        animation: none;
+        transform: scale(1);
+    }
+
+    .level-1 {
+        filter: none;
+        animation: none;
+        transform: scale(1);
+    }
+
+    .level-2 {
+        filter: blur(2px) brightness(0.85);
+        animation: none;
+        transform: scale(1.01);
+    }
+
+    .level-3 {
+        filter: blur(4px) brightness(0.7);
+        animation: lightShake 0.45s infinite;
+    }
+
+    .level-4 {
+        filter: blur(8px) brightness(0.5);
+        animation: strongShake 0.22s infinite;
+    }
+
+    @keyframes lightShake {
+        0% { transform: translate(0, 0) scale(1.03); }
+        25% { transform: translate(3px, -3px) scale(1.03); }
+        50% { transform: translate(-3px, 3px) scale(1.03); }
+        75% { transform: translate(3px, 3px) scale(1.03); }
+        100% { transform: translate(0, 0) scale(1.03); }
+    }
+
+    @keyframes strongShake {
+        0% { transform: translate(0, 0) scale(1.06); }
+        20% { transform: translate(8px, -6px) scale(1.06); }
+        40% { transform: translate(-8px, 6px) scale(1.06); }
+        60% { transform: translate(7px, 8px) scale(1.06); }
+        80% { transform: translate(-7px, -8px) scale(1.06); }
+        100% { transform: translate(0, 0) scale(1.06); }
+    }
+</style>
+</head>
+
+<body>
+
+<!-- 여기 이미지 파일명 확인 -->
+<img id="bgImg" class="level-0" src="images/야구장입구.png" alt="야구장 입구 배경">
+
+<div id="imageError">이미지를 불러오지 못했습니다. 파일명과 위치를 확인하세요.</div>
+<div id="overlay"></div>
+
+<div class="screen">
+    <div class="card">
+        <h1 id="title">야구장의 음주문화<br>- 절주 시뮬레이터 -</h1>
+        <p id="message">야구장에 왔으니 재밌게 즐기다 가야지</p>
+
+        <p id="visitorCount">방문자 수를 불러오는 중입니다...</p>
+        <div id="buttons" class="buttons">
+            <button class="start-btn" onclick="startGame()">시작하기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let level = 0;
+
+    const entranceImage = "images/야구장입구.png";
+    const insideImage = "images/야구장내부.png";
+
+    const bgImg = document.getElementById("bgImg");
+    const imageError = document.getElementById("imageError");
+    const overlay = document.getElementById("overlay");
+    const title = document.getElementById("title");
+    const message = document.getElementById("message");
+    const buttons = document.getElementById("buttons");
+    const visitorCountEl = document.getElementById("visitorCount");
+
+    function showVisitorCount(text) {
+        if (visitorCountEl) {
+            visitorCountEl.textContent = text;
+        }
+    }
+
+    function initVisitorCount() {
+        if (!visitorCountEl) return;
+
+        // 이 코드는 현재 브라우저 단위 방문 수를 저장합니다.
+        const visitKey = "simulator_local_visit_count";
+        const count = Number(localStorage.getItem(visitKey) || 0) + 1;
+        localStorage.setItem(visitKey, count);
+        showVisitorCount(`이 브라우저 방문수: ${count}회`);
+        visitorCountEl.style.display = "block";
+
+        // 전체 방문자 수를 알고 싶다면 서버 또는 외부 분석 도구가 필요합니다.
+        // fetch("/visitor-count")
+        //     .then(res => res.json())
+        //     .then(data => showVisitorCount(`전체 방문자 수: ${data.count}명`))
+        //     .catch(() => showVisitorCount("방문자 수를 불러올 수 없습니다."));
+    }
+
+    initVisitorCount();
+
+    bgImg.onerror = function () {
+        imageError.style.display = "block";
+    };
+
+    bgImg.onload = function () {
+        imageError.style.display = "none";
+    };
+
+    function changeImage(fileName) {
+        bgImg.src = fileName;
+    }
+
+    function setButtons(buttonList) {
+        buttons.innerHTML = "";
+
+        buttonList.forEach(btn => {
+            const button = document.createElement("button");
+            button.textContent = btn.text;
+            button.className = btn.className;
+            button.onclick = btn.action;
+            buttons.appendChild(button);
+        });
+    }
+
+    function applyLevelEffect(currentLevel) {
+        bgImg.className = "level-" + currentLevel;
+
+        if (currentLevel === 0) {
+            overlay.style.background = "rgba(0, 0, 0, 0.35)";
+        } else if (currentLevel === 1) {
+            overlay.style.background = "rgba(0, 0, 0, 0.25)";
+        } else if (currentLevel === 2) {
+            overlay.style.background = "rgba(0, 0, 0, 0.38)";
+        } else if (currentLevel === 3) {
+            overlay.style.background = "rgba(0, 0, 0, 0.48)";
+        } else if (currentLevel === 4) {
+            overlay.style.background = "rgba(0, 0, 0, 0.62)";
+        }
+    }
+
+    function startGame() {
+        bgImg.style.opacity = "0.2";
+
+        setTimeout(() => {
+            changeImage(insideImage);
+            bgImg.style.opacity = "1";
+            if (visitorCountEl) {
+                visitorCountEl.style.display = "none";
+            }
+
+            level = 0;
+            applyLevelEffect(0);
+
+            title.textContent = "마실 것은 뭐가 좋을까?";
+            message.textContent = "선택하세요!";
+
+            setButtons([
+                {
+                    text: "논알콜 음료",
+                    className: "non-alcohol-btn",
+                    action: chooseNonAlcohol
+                },
+                {
+                    text: "맥주",
+                    className: "beer-btn",
+                    action: chooseBeer
+                }
+            ]);
+        }, 500);
+    }
+
+    function chooseNonAlcohol() {
+        level = 0;
+        applyLevelEffect(0);
+
+        title.textContent = "좋은 선택입니다!";
+        message.textContent = "절주를 생활화 하는 당신!\n정말 멋있어요 *^^*!!";
+
+        setButtons([
+            {
+                text: "다시하기",
+                className: "restart-btn",
+                action: restart
+            }
+        ]);
+    }
+
+    function chooseBeer() {
+        level = 0;
+        applyLevelEffect(0);
+
+        title.textContent = "KBO SAFE 캠페인";
+        message.textContent =
+            "과음 방지를 위해 한 경기당 구매할 수 있는\n" +
+            "주류의 양이 1인 최대 2리터 이하로 제한됩니다!";
+
+        setButtons([
+            {
+                text: "마신다",
+                className: "drink-btn",
+                action: drink
+            },
+            {
+                text: "안 마신다",
+                className: "stop-btn",
+                action: stopDrink
+            }
+        ]);
+    }
+
+    function drink() {
+        if (level < 4) {
+            level = level + 1;
+        }
+
+        applyLevelEffect(level);
+
+        if (level === 1) {
+            title.textContent = "1잔";
+            message.textContent = "시원하고 좋다 ㅎㅎ";
+            showDrinkButtons();
+        } 
+        
+        else if (level === 2) {
+            title.textContent = "2잔";
+            message.textContent = "기분 좋다!";
+            showDrinkButtons();
+        } 
+        
+        else if (level === 3) {
+            title.textContent = "3잔";
+            message.textContent = "취하는데?";
+            showDrinkButtons();
+        } 
+        
+        else if (level === 4) {
+            title.textContent = "4잔";
+            message.textContent =
+                "한 잔 더가 아니라, 적당한 선에서\n" +
+                "멈추는 선택을 해봅시다!\n\n" +
+                "주(酒)도권을 가지고 스스로를\n" +
+                "과음으로부터 지켜보아요";
+
+            setButtons([
+                {
+                    text: "다시하기",
+                    className: "restart-btn",
+                    action: restart
+                }
+            ]);
+        }
+    }
+
+    function showDrinkButtons() {
+        setButtons([
+            {
+                text: "마신다",
+                className: "drink-btn",
+                action: drink
+            },
+            {
+                text: "안 마신다",
+                className: "stop-btn",
+                action: stopDrink
+            }
+        ]);
+    }
+
+    function stopDrink() {
+        applyLevelEffect(0);
+
+        title.textContent = "절주 선택";
+
+        if (level === 0) {
+            message.textContent = "멋진 선택입니다!";
+        } else if (level === 1) {
+            message.textContent = "절주할 줄 아는 당신!\n정말 멋있어요~";
+        } else if (level === 2) {
+            message.textContent = "적당한 선에서\n멈출 줄 아시네요~!";
+        } else if (level === 3) {
+            message.textContent = "좋은 선택 입니다!\n과음은 금물~!";
+        } else if (level === 4) {
+            message.textContent = "멈추는 선택은 언제나 중요합니다.";
+        }
+
+        setButtons([
+            {
+                text: "다시하기",
+                className: "restart-btn",
+                action: restart
+            }
+        ]);
+    }
+
+    function restart() {
+        level = 0;
+
+        changeImage(entranceImage);
+        bgImg.style.opacity = "1";
+        applyLevelEffect(0);
+        if (visitorCountEl) {
+            visitorCountEl.style.display = "block";
+        }
+
+        title.innerHTML = "야구장의 음주문화<br>- 절주 시뮬레이터 -";
+        message.textContent = "야구장에 왔으니 재밌게 즐기다 가야지";
+
+        setButtons([
+            {
+                text: "시작하기",
+                className: "start-btn",
+                action: startGame
+            }
+        ]);
+    }
+</script>
+
+</body>
+</html>
